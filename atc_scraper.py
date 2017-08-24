@@ -11,12 +11,8 @@ def fetchList(manyURLs, scrapedTitle="All Things Considered"):
     for URL in manyURLs:
         fetchATC(URL, scrapedTitle)
 
-def fetchATC(testUrl, scrapedTitle="All Things Considered"):
-    response = urllib2.urlopen(testUrl)
-    html = response.read()
-
-    soup = BeautifulSoup(html)
-    content = soup.findAll("li",{"class":"audio-tool audio-tool-download"})
+def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
+    thisProgram = NprProgram(episodeURL, scrapedTitle)    
 
     counter = 1
 
@@ -26,23 +22,20 @@ def fetchATC(testUrl, scrapedTitle="All Things Considered"):
     else:
         print "Temp directory found"
 
-    for i in content:
-            foundURL = i.a["href"]
-            #print foundURL
+    for downloadLink in thisProgram.segmentURLs:
 
-            programDate = foundURL.split('/')[-1][:9]
-            segment = str(counter).zfill(3)
-            filename = foundURL.split('/')[-1][9:-5].split('?')[0]
-            savename = programDate + segment + '_' + filename
+            segment = str(thisProgram.segmentURLs.index(downloadLink)).zfill(3)
+            filename = thisProgram.getFilename(downloadLink)
+            savename = thisProgram.programDate + segment + '_' + filename
+            
             print "Saving segment:", savename
-            urllib.urlretrieve (i.a["href"], "temp/" + savename)
-            counter += 1
+            urllib.urlretrieve(downloadLink, "temp/" + savename)
 
-    if counter > 1:
+    if thisProgram.countSegments > 1:
         print
-        print "Segments found:", counter
-        concatName = programDate + "complete_" + scrapedTitle.replace(' ','-') + ".mp3"
-        concatNameCruft =  programDate + "complete_" + scrapedTitle.replace(' ','-') + "_MP3WRAP.mp3"
+        print "Segments found:", thisProgram.countSegments
+        concatName = thisProgram.programDate + "complete_" + thisProgram.showTitle.replace(' ','-') + ".mp3"
+        concatNameCruft =  thisProgram.programDate + "complete_" + thisProgram.showTitle.replace(' ','-') + "_MP3WRAP.mp3"
         try:
             print "Concatenating segments..."
             call("mp3wrap " + concatName + " ./temp/*.mp3", shell=True)
@@ -69,21 +62,49 @@ def fetchATC(testUrl, scrapedTitle="All Things Considered"):
             print "Success!"
         try:
             print "Writing MP3 tag info..."
-            titleDate = programDate[4:6] + "/" + programDate[6:8] + "/" + programDate[0:4]
-            #print titleDate
-            title=unicode(titleDate + " " + scrapedTitle)
-            print "Title:",title
-            artist=unicode(scrapedTitle)
-            print "Artist:",artist
-            titleDate = programDate[4:2] + "/" + programDate[6:2] + "/" + programDate[0:4]
-            taghelper.overwritetag(
-                concatName,
-                title=title,
-                artist=artist
-                album=artist
-                )
+            fixMp3Tag(concatName,thisProgram)
         except:
             print "Error, cannot write MP3 tag"
         else:
             print "Success!"
             print
+            
+def fixMp3Tag(filename,thisProgram):
+    titleDate = thisProgram.programDate[4:6] + "/" + thisProgram.programDate[6:8] + "/" + thisProgram.programDate[0:4]
+    #print titleDate
+    title=unicode(titleDate + " " + thisProgram.showTitle)
+    print "Title:",title
+    artist=unicode(thisProgram.showTitle)
+    print "Artist:",artist
+    taghelper.overwritetag(
+        filename,
+        title=title,
+        artist=artist,
+        album=artist #Need album for proper threading on Google Play Music app
+        )
+
+class NprProgram:
+    def __init__(self, episodeURL, showTitle="All Things Considered"):
+        self.episodeURL = episodeURL
+        self.showTitle = showTitle
+        
+        response = urllib2.urlopen(episodeURL)
+        html = response.read()
+
+        soup = BeautifulSoup(html)
+        
+        #Historically these classes have changed a few times
+        content = soup.findAll("li",{"class":"audio-tool audio-tool-download"})
+
+        self.segmentURLs = []
+        for i in content:
+            self.segmentURLs.append(i.a["href"])
+
+        #Historically this dated file format has not changed
+        self.programDate = self.segmentURLs[0].split('/')[-1][:9]
+
+    def countSegments(self):
+        return len(self.segmentURLs)
+
+    def getFilename(self, downloadURL):
+        return downloadURL.split('/')[-1][9:-5].split('?')[0]
