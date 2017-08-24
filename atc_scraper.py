@@ -31,9 +31,9 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
             print "Saving segment:", savename
             urllib.urlretrieve(downloadLink, "temp/" + savename)
 
-    if thisProgram.countSegments > 1:
+    if thisProgram.countSegments() > 1:
         print
-        print "Segments found:", thisProgram.countSegments
+        print "Segments found:", thisProgram.countSegments()
         concatName = thisProgram.programDate + "complete_" + thisProgram.showTitle.replace(' ','-') + ".mp3"
         concatNameCruft =  thisProgram.programDate + "complete_" + thisProgram.showTitle.replace(' ','-') + "_MP3WRAP.mp3"
         try:
