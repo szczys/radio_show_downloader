@@ -80,6 +80,7 @@ def fetchATC(testUrl, scrapedTitle="All Things Considered"):
                 concatName,
                 title=title,
                 artist=artist
+                album=artist
                 )
         except:
             print "Error, cannot write MP3 tag"
