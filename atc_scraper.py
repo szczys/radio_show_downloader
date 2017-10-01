@@ -1,9 +1,9 @@
 import urllib2
 import urllib
 from BeautifulSoup import BeautifulSoup
-from subprocess import call
 import os
 import taghelper
+from pydub import AudioSegment   #sudo pip install pydub
 
 #allUrls = ["http://www.npr.org/programs/all-things-considered/2017/08/15/543587917?showDate=2017-08-15"]
 
@@ -22,6 +22,7 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
     else:
         print "Temp directory found"
 
+    segmentFiles = []
     for downloadLink in thisProgram.segmentURLs:
 
             segment = str(thisProgram.segmentURLs.index(downloadLink)).zfill(3)
@@ -30,6 +31,7 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
             
             print "Saving segment:", savename
             urllib.urlretrieve(downloadLink, "temp/" + savename)
+            segmentFiles.append("temp/" + savename)
 
     segs = thisProgram.countSegments()
     if segs > 1:
@@ -39,10 +41,11 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
         concatNameCruft =  thisProgram.programDate + "complete_" + thisProgram.showTitle.replace(' ','-') + "_MP3WRAP.mp3"
         try:
             print "Concatenating segments..."
-            call("mp3wrap " + concatName + " ./temp/*.mp3", shell=True)
+            concatenateMP3(segmentFiles, concatName)
         except:
             print "ERROR: Could not concatenate downloaded MP3 files"
             print "Downloaded files are found in the ./temp directory"
+            return
         else:
             print "Success!"
             print "Deleting temporary segments..."
@@ -55,13 +58,6 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
             else:
                 print "Success!"
         try:
-            print "Renaming files to remove MP3WRAP cruft..."
-            os.rename(concatNameCruft, concatName)
-        except:
-            print "Error: Cannot rename the crufty filename (should end in _MP3WRAP)"
-        else:
-            print "Success!"
-        try:
             print "Writing MP3 tag info..."
             fixMp3Tag(concatName,thisProgram)
         except:
@@ -69,7 +65,19 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
         else:
             print "Success!"
             print
-            
+
+def concatenateMP3(fileList,newFilename):
+    fileList.sort()
+    
+    oneMp3File = AudioSegment.from_mp3(fileList[0])
+
+    if len(fileList) > 1:
+        for mp3 in fileList[1:]:
+            print ".",
+            oneMp3File += AudioSegment.from_mp3(mp3)
+
+    oneMp3File.export(newFilename)
+    
 def fixMp3Tag(filename,thisProgram):
     titleDate = thisProgram.programDate[4:6] + "/" + thisProgram.programDate[6:8] + "/" + thisProgram.programDate[0:4]
     #print titleDate
