@@ -4,6 +4,7 @@ from BeautifulSoup import BeautifulSoup
 import os
 import taghelper
 from pydub import AudioSegment   #sudo pip install pydub
+import json
 
 #allUrls = ["http://www.npr.org/programs/all-things-considered/2017/08/15/543587917?showDate=2017-08-15"]
 
@@ -26,8 +27,10 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
     for downloadLink in thisProgram.segmentURLs:
 
             segment = str(thisProgram.segmentURLs.index(downloadLink)).zfill(3)
-            filename = thisProgram.getFilename(downloadLink)
-            savename = thisProgram.programDate + segment + '_' + filename
+            #Insert the segment number into the filename used to save this track
+            filename = downloadLink.split('/')[-1]
+            underscoreIndex = filename.find('_')
+            savename = filename[:underscoreIndex] + '_' + segment + filename[underscoreIndex:]
             
             print "Saving segment:", savename
             urllib.urlretrieve(downloadLink, "temp/" + savename)
@@ -37,8 +40,8 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
     if segs > 1:
         print
         print "Segments found:", segs
-        concatName = thisProgram.programDate + "complete_" + thisProgram.showTitle.replace(' ','-') + ".mp3"
-        concatNameCruft =  thisProgram.programDate + "complete_" + thisProgram.showTitle.replace(' ','-') + "_MP3WRAP.mp3"
+        concatName = thisProgram.programDate + "_complete_" + thisProgram.showTitle.replace(' ','-') + ".mp3"
+
         try:
             print "Concatenating segments..."
             concatenateMP3(segmentFiles, concatName)
@@ -79,7 +82,8 @@ def concatenateMP3(fileList,newFilename):
     oneMp3File.export(newFilename)
     
 def fixMp3Tag(filename,thisProgram):
-    titleDate = thisProgram.programDate[4:6] + "/" + thisProgram.programDate[6:8] + "/" + thisProgram.programDate[0:4]
+    datedata = thisProgram.programDate.split('-')
+    titleDate = datedata[1] + "/" + datedata[2] + "/" + datedata[0]
     #print titleDate
     title=unicode(titleDate + " " + thisProgram.showTitle)
     print "Title:",title
@@ -101,19 +105,15 @@ class NprProgram:
         html = response.read()
 
         soup = BeautifulSoup(html)
+
+        fullshow = soup.find("div",{"id":"full-show"})
+        playalljson = json.loads(fullshow.find("b")["data-play-all"])
+
+        self.segmentURLs = list()
+        for track in playalljson['audioData']:
+            self.segmentURLs.append(track['audioUrl'].split('?')[0])
         
-        #Historically these classes have changed a few times
-        content = soup.findAll("li",{"class":"audio-tool audio-tool-download"})
-
-        self.segmentURLs = []
-        for i in content:
-            self.segmentURLs.append(i.a["href"])
-
-        #Historically this dated file format has not changed
-        self.programDate = self.segmentURLs[0].split('/')[-1][:9]
+        self.programDate = soup.find("time")['datetime'].strip('-')
 
     def countSegments(self):
         return len(self.segmentURLs)
-
-    def getFilename(self, downloadURL):
-        return downloadURL.split('/')[-1][9:-5].split('?')[0]

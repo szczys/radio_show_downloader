@@ -1,4 +1,4 @@
-import eyed3    #sudo apt-get install python-eyed3
+import eyed3    #sudo pip install eyed3==0.7.11
 
 myMP3 = '/home/mike/Downloads/cartalk/Car_Talk_2011-10-15.mp3'
 
