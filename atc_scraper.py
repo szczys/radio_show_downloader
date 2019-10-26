@@ -7,6 +7,7 @@ import json
 
 #allUrls = ["http://www.npr.org/programs/all-things-considered/2017/08/15/543587917?showDate=2017-08-15"]
 
+temp_dir = "temp/"
 output_dir = "files/"
 
 def fetchList(manyURLs, scrapedTitle="All Things Considered"):
@@ -18,11 +19,17 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
 
     counter = 1
 
-    if os.path.isdir("temp") == False:
+    if os.path.isdir(temp_dir) == False:
         print("No temp directory; making one now")
-        os.mkdir("temp")
+        os.mkdir(temp_dir)
     else:
         print("Temp directory found")
+
+    if os.path.isdir(output_dir) == False:
+        print("No output directory; making one now")
+        os.mkdir(output_dir)
+    else:
+        print("Output directory found")
 
     segmentFiles = []
     for downloadLink in thisProgram.segmentURLs:
@@ -63,6 +70,7 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
                 print("Success!")
         try:
             print("Writing MP3 tag info...")
+            print(thisProgram)
             fixMp3Tag(output_dir + concatName,thisProgram)
         except:
             print("Error, cannot write MP3 tag")
@@ -86,9 +94,9 @@ def fixMp3Tag(filename,thisProgram):
     datedata = thisProgram.programDate.split('-')
     titleDate = datedata[1] + "/" + datedata[2] + "/" + datedata[0]
     #print(titleDate)
-    title=unicode(titleDate + " " + thisProgram.showTitle)
+    title=str(titleDate + " " + thisProgram.showTitle)
     print("Title:",title)
-    artist=unicode(thisProgram.showTitle)
+    artist=str(thisProgram.showTitle)
     print("Artist:",artist)
     taghelper.overwritetag(
         filename,
@@ -105,7 +113,7 @@ class NprProgram:
         response = urllib.request.urlopen(episodeURL)
         html = response.read()
 
-        soup = BeautifulSoup(html)
+        soup = BeautifulSoup(html, "lxml")
 
         fullshow = soup.find("div",{"id":"full-show"})
         playalljson = json.loads(fullshow.find("b")["data-play-all"])
