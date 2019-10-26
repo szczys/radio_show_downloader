@@ -1,12 +1,13 @@
-import urllib2
-import urllib
-from BeautifulSoup import BeautifulSoup
+import urllib.request		#pip3 install --user urllib.request
+from bs4 import BeautifulSoup	#pip3 install --user bs4
 import os
 import taghelper
-from pydub import AudioSegment   #sudo pip install pydub
+from pydub import AudioSegment	#pipe install --user pydub
 import json
 
 #allUrls = ["http://www.npr.org/programs/all-things-considered/2017/08/15/543587917?showDate=2017-08-15"]
+
+output_dir = "files/"
 
 def fetchList(manyURLs, scrapedTitle="All Things Considered"):
     for URL in manyURLs:
@@ -18,10 +19,10 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
     counter = 1
 
     if os.path.isdir("temp") == False:
-        print "No temp directory; making one now"
+        print("No temp directory; making one now")
         os.mkdir("temp")
     else:
-        print "Temp directory found"
+        print("Temp directory found")
 
     segmentFiles = []
     for downloadLink in thisProgram.segmentURLs:
@@ -32,42 +33,42 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
             underscoreIndex = filename.find('_')
             savename = filename[:underscoreIndex] + '_' + segment + filename[underscoreIndex:]
             
-            print "Saving segment:", savename
-            urllib.urlretrieve(downloadLink, "temp/" + savename)
+            print("Saving segment:", savename)
+            urllib.request.urlretrieve(downloadLink, "temp/" + savename)
             segmentFiles.append("temp/" + savename)
 
     segs = thisProgram.countSegments()
     if segs > 1:
-        print
-        print "Segments found:", segs
+        print('')
+        print("Segments found:", segs)
         concatName = thisProgram.programDate + "_complete_" + thisProgram.showTitle.replace(' ','-') + ".mp3"
 
         try:
-            print "Concatenating segments..."
-            concatenateMP3(segmentFiles, concatName)
+            print("Concatenating segments...")
+            concatenateMP3(segmentFiles, output_dir + concatName)
         except:
-            print "ERROR: Could not concatenate downloaded MP3 files"
-            print "Downloaded files are found in the ./temp directory"
+            print("ERROR: Could not concatenate downloaded MP3 files")
+            print("Downloaded files are found in the ./temp directory")
             return
         else:
-            print "Success!"
-            print "Deleting temporary segments..."
+            print("Success!")
+            print("Deleting temporary segments...")
             try:
                 for file in os.listdir("temp"):
                     if file.endswith(".mp3"):
                         os.remove("temp/" + file)
             except:
-                print "Can't remove temp files for some reason"
+                print("Can't remove temp files for some reason")
             else:
-                print "Success!"
+                print("Success!")
         try:
-            print "Writing MP3 tag info..."
-            fixMp3Tag(concatName,thisProgram)
+            print("Writing MP3 tag info...")
+            fixMp3Tag(output_dir + concatName,thisProgram)
         except:
-            print "Error, cannot write MP3 tag"
+            print("Error, cannot write MP3 tag")
         else:
-            print "Success!"
-            print
+            print("Success!")
+            print('')
 
 def concatenateMP3(fileList,newFilename):
     fileList.sort()
@@ -76,7 +77,7 @@ def concatenateMP3(fileList,newFilename):
 
     if len(fileList) > 1:
         for mp3 in fileList[1:]:
-            print ".",
+            print(".",end="")
             oneMp3File += AudioSegment.from_mp3(mp3)
 
     oneMp3File.export(newFilename)
@@ -84,11 +85,11 @@ def concatenateMP3(fileList,newFilename):
 def fixMp3Tag(filename,thisProgram):
     datedata = thisProgram.programDate.split('-')
     titleDate = datedata[1] + "/" + datedata[2] + "/" + datedata[0]
-    #print titleDate
+    #print(titleDate)
     title=unicode(titleDate + " " + thisProgram.showTitle)
-    print "Title:",title
+    print("Title:",title)
     artist=unicode(thisProgram.showTitle)
-    print "Artist:",artist
+    print("Artist:",artist)
     taghelper.overwritetag(
         filename,
         title=title,
@@ -101,7 +102,7 @@ class NprProgram:
         self.episodeURL = episodeURL
         self.showTitle = showTitle
         
-        response = urllib2.urlopen(episodeURL)
+        response = urllib.request.urlopen(episodeURL)
         html = response.read()
 
         soup = BeautifulSoup(html)
