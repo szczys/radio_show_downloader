@@ -70,7 +70,6 @@ def fetchATC(episodeURL, scrapedTitle="All Things Considered"):
                 print("Success!")
         try:
             print("Writing MP3 tag info...")
-            print(thisProgram)
             fixMp3Tag(output_dir + concatName,thisProgram)
         except:
             print("Error, cannot write MP3 tag")
